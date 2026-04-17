@@ -1,9 +1,8 @@
 const https = require('https');
+const http = require('http');
 
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 const PORT = process.env.PORT || 3000;
-
-const http = require('http');
 
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,9 +21,11 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  let body = '';
-  req.on('data', chunk => body += chunk);
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
   req.on('end', () => {
+    const body = Buffer.concat(chunks);
+
     const options = {
       hostname: 'api.anthropic.com',
       path: '/v1/messages',
@@ -33,14 +34,15 @@ const server = http.createServer((req, res) => {
         'Content-Type': 'application/json',
         'x-api-key': API_KEY,
         'anthropic-version': '2023-06-01',
-        'Content-Length': Buffer.byteLength(body)
+        'Content-Length': body.length
       }
     };
 
     const proxyReq = https.request(options, (proxyRes) => {
-      let responseData = '';
-      proxyRes.on('data', chunk => responseData += chunk);
+      const responseChunks = [];
+      proxyRes.on('data', chunk => responseChunks.push(chunk));
       proxyRes.on('end', () => {
+        const responseData = Buffer.concat(responseChunks).toString('utf8');
         res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
         res.end(responseData);
       });
