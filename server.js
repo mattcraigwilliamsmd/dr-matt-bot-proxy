@@ -6,7 +6,6 @@ const PORT = process.env.PORT || 3000;
 const http = require('http');
 
 const server = http.createServer((req, res) => {
-  // CORS headers — allow your Netlify site
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -39,8 +38,12 @@ const server = http.createServer((req, res) => {
     };
 
     const proxyReq = https.request(options, (proxyRes) => {
-      res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
-      proxyRes.pipe(res);
+      let responseData = '';
+      proxyRes.on('data', chunk => responseData += chunk);
+      proxyRes.on('end', () => {
+        res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
+        res.end(responseData);
+      });
     });
 
     proxyReq.on('error', (e) => {
